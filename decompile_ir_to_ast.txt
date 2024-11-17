@@ -1,0 +1,14 @@
+核心步骤：解析 LLVM IR → 构建中间模型 → 生成 JavaScript AST。
+
+将 LLVM IR 映射到 JavaScript 的语法结构：
+
+映射规则
+LLVM IR	          JavaScript 语法
+模块	            顶级作用域或文件
+函数定义	        function 关键字，映射到 JS 的函数声明
+参数	            JavaScript 的函数参数
+基本块	          JavaScript 中的语句块 {}
+算术指令 (add)	  对应的 JavaScript 运算符 +
+返回指令 (ret)	  return 语句
+全局变量	        JavaScript 的 var, let, 或 const
+控制流指令（br）	JavaScript 的控制语句（if, while 等）

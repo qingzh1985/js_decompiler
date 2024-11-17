@@ -1,7 +1,15 @@
 核心步骤：解析 LLVM IR → 构建中间模型 → 生成 JavaScript AST。
 
-将 LLVM IR 映射到 JavaScript 的语法结构：
+1. 分析 LLVM IR
+以下是一个简单函数的 LLVM IR：
+define i32 @add(i32 %a, i32 %b) {
+entry:
+  %0 = add i32 %a, %b
+  ret i32 %0
+}
 
+2. 转化到 JavaScript 的模型
+将 LLVM IR 映射到 JavaScript 的语法结构：
 映射规则
 LLVM IR	          JavaScript 语法
 模块	            顶级作用域或文件
@@ -12,3 +20,101 @@ LLVM IR	          JavaScript 语法
 返回指令 (ret)	  return 语句
 全局变量	        JavaScript 的 var, let, 或 const
 控制流指令（br）	JavaScript 的控制语句（if, while 等）
+
+上述LLVM IR对应：
+function add(a, b) {
+    return a + b;
+}
+
+3. 构造 JavaScript AST
+python示例：
+=======================================
+import json
+
+# 示例：LLVM IR 解析和转换
+llvm_ir = """
+define i32 @add(i32 %a, i32 %b) {
+entry:
+  %0 = add i32 %a, %b
+  ret i32 %0
+}
+"""
+
+# 简单解析 LLVM IR
+def parse_llvm_ir(llvm_ir):
+    functions = []
+    for line in llvm_ir.split("\n"):
+        line = line.strip()
+        if line.startswith("define"):
+            fn_name = line.split("@")[1].split("(")[0]
+            functions.append({"name": fn_name, "params": ["a", "b"], "body": []})
+        elif "add" in line:
+            functions[-1]["body"].append({"type": "add", "operands": ["a", "b"]})
+        elif "ret" in line:
+            functions[-1]["body"].append({"type": "ret", "value": "add"})
+    return functions
+
+# 转换为 JavaScript AST
+def llvm_to_js_ast(functions):
+    ast = {
+        "type": "Program",
+        "body": []
+    }
+    for fn in functions:
+        ast["body"].append({
+            "type": "FunctionDeclaration",
+            "id": {"type": "Identifier", "name": fn["name"]},
+            "params": [{"type": "Identifier", "name": p} for p in fn["params"]],
+            "body": {
+                "type": "BlockStatement",
+                "body": [
+                    {
+                        "type": "ReturnStatement",
+                        "argument": {
+                            "type": "BinaryExpression",
+                            "operator": "+",
+                            "left": {"type": "Identifier", "name": "a"},
+                            "right": {"type": "Identifier", "name": "b"}
+                        }
+                    }
+                ]
+            }
+        })
+    return ast
+
+# 执行解析和转换
+functions = parse_llvm_ir(llvm_ir)
+js_ast = llvm_to_js_ast(functions)
+
+# 输出结果
+print(json.dumps(js_ast, indent=2))
+===================================
+
+4.生成的AST
+{
+  "type": "Program",
+  "body": [
+    {
+      "type": "FunctionDeclaration",
+      "id": { "type": "Identifier", "name": "add" },
+      "params": [
+        { "type": "Identifier", "name": "a" },
+        { "type": "Identifier", "name": "b" }
+      ],
+      "body": {
+        "type": "BlockStatement",
+        "body": [
+          {
+            "type": "ReturnStatement",
+            "argument": {
+              "type": "BinaryExpression",
+              "operator": "+",
+              "left": { "type": "Identifier", "name": "a" },
+              "right": { "type": "Identifier", "name": "b" }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

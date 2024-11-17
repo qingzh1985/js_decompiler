@@ -1,4 +1,4 @@
-# jsast_gen
+# js_decompiler
 This is a javascript decompiler written in C++. 
 
 AST description：

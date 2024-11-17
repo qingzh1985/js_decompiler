@@ -1,0 +1,75 @@
+1. IR 的数据结构组成
+LLVM IR 是一种面向编译器优化和代码生成的表示形式，其数据结构分为以下层级：
+
+1.1 模块（Module）
+概念：
+Module 是 LLVM IR 的顶层容器，表示一个程序或编译单元。
+包含全局变量、函数、类型定义、元数据等。
+数据结构：
+class Module {
+public:
+  std::string Name;                     // 模块名
+  std::vector<GlobalVariable *> Globals; // 全局变量
+  std::vector<Function *> Functions;    // 函数列表
+  std::vector<StructType *> Types;      // 自定义类型
+};
+
+1.2 函数（Function）
+概念：
+每个函数是一个独立的实体，包含函数签名、参数列表和函数体（基本块列表）。
+函数体由多个基本块（BasicBlock）组成。
+数据结构：
+class Function {
+public:
+  std::string Name;                   // 函数名
+  FunctionType *FuncType;             // 函数类型（参数类型和返回值）
+  std::vector<BasicBlock *> Blocks;   // 基本块列表
+};
+
+1.3 基本块（BasicBlock）
+概念：
+一个基本块是 LLVM IR 的最小执行单元，表示一个顺序执行的指令序列。
+每个基本块必须以一个终结指令（如 ret 或 br）结尾，定义了控制流。
+数据结构：
+class BasicBlock {
+public:
+  std::string Name;                   // 基本块名
+  std::vector<Instruction *> Instrs; // 指令列表
+  BasicBlock *Next;                   // 后继基本块（可选）
+};
+
+1.4 指令（Instruction）
+概念：
+指令是 LLVM IR 的核心组成部分，表示计算或操作（如算术运算、内存访问、控制流）。
+每条指令遵循 SSA 形式，即每个指令生成的值只能被赋值一次。
+数据结构：
+class Instruction {
+public:
+  std::string Opcode;                // 操作码（如 add, load, call 等）
+  std::vector<Value *> Operands;    // 操作数列表
+  Type *ResultType;                 // 指令生成的结果类型
+  Instruction *Next;                // 链接到下一条指令
+};
+
+1.5 值（Value）
+概念：
+Value 是 LLVM IR 中最基础的抽象，表示可以被指令引用的任何实体（如变量、常量、指令）。
+所有指令都是 Value，但不是所有 Value 都是指令。
+数据结构：
+class Value {
+public:
+  std::string Name;     // 值的名称
+  Type *ValueType;      // 值的类型（如 i32, float, pointer）
+};
+
+1.6 类型（Type）
+概念：
+LLVM IR 是强类型的，每个值都有明确的类型。
+类型分为基本类型（如整数、浮点数）和复合类型（如结构体、数组、指针）。
+数据结构：
+class Type {
+public:
+  enum TypeID { Void, Integer, Float, Pointer, Struct, Array };
+  TypeID ID;                       // 类型标识
+  std::vector<Type *> SubTypes;    // 子类型（复合类型）
+};

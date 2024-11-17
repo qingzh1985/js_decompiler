@@ -1,0 +1,196 @@
+1. 总体架构的设计模式
+1.1 工厂模式（Factory Pattern）
+用途：创建解析 LLVM IR 和生成 AST 的对象。
+应用场景：
+不同语言（如 LLVM IR、WebAssembly）输入的解析器。
+不同目标语言（如 JavaScript、Python）代码生成器。
+示例：
+class ParserFactory {
+public:
+    static std::unique_ptr<Parser> createParser(const std::string& inputType) {
+        if (inputType == "LLVM IR") {
+            return std::make_unique<LLVMIRParser>();
+        } else if (inputType == "WASM") {
+            return std::make_unique<WASMParser>();
+        }
+        throw std::invalid_argument("Unknown input type");
+    }
+};
+
+1.2 策略模式（Strategy Pattern）
+用途：定义不同的反编译策略。
+应用场景：
+LLVM IR 的指令到语法树节点的映射。
+控制流（如分支、循环）的转换规则。
+示例：
+class DecompileStrategy {
+public:
+    virtual ASTNode* decompile(const IRInstruction& instr) = 0;
+    virtual ~DecompileStrategy() = default;
+};
+
+class AddInstructionStrategy : public DecompileStrategy {
+public:
+    ASTNode* decompile(const IRInstruction& instr) override {
+        // Convert LLVM "add" instruction to JavaScript "+"
+        return new BinaryExpressionNode("+", instr.operand1, instr.operand2);
+    }
+};
+
+class StrategyContext {
+    DecompileStrategy* strategy;
+public:
+    void setStrategy(DecompileStrategy* strat) { strategy = strat; }
+    ASTNode* executeStrategy(const IRInstruction& instr) {
+        return strategy->decompile(instr);
+    }
+};
+
+1.3 观察者模式（Observer Pattern）
+用途：在反编译的各阶段实时通知其他组件（如日志记录、可视化工具）。
+应用场景：
+调试信息的记录（如解析进度、语法树生成进度）。
+实时显示反编译状态。
+复制代码
+class Observer {
+public:
+    virtual void update(const std::string& message) = 0;
+};
+
+class Logger : public Observer {
+public:
+    void update(const std::string& message) override {
+        std::cout << "Log: " << message << std::endl;
+    }
+};
+
+class Decompiler {
+    std::vector<Observer*> observers;
+public:
+    void addObserver(Observer* observer) { observers.push_back(observer); }
+    void notifyObservers(const std::string& message) {
+        for (auto* obs : observers) {
+            obs->update(message);
+        }
+    }
+};
+
+1.4 访问者模式（Visitor Pattern）
+用途：为 AST 遍历和生成 JavaScript 代码提供扩展性。
+应用场景：
+遍历 AST 节点并生成代码。
+进行语法优化或静态分析。
+示例：
+class ASTNodeVisitor {
+public:
+    virtual void visitBinaryExpression(BinaryExpressionNode* node) = 0;
+    virtual void visitReturnStatement(ReturnStatementNode* node) = 0;
+    // Other node types...
+    virtual ~ASTNodeVisitor() = default;
+};
+
+class JavaScriptCodeGenerator : public ASTNodeVisitor {
+public:
+    void visitBinaryExpression(BinaryExpressionNode* node) override {
+        std::cout << "(" << node->left << " + " << node->right << ")";
+    }
+    void visitReturnStatement(ReturnStatementNode* node) override {
+        std::cout << "return " << node->value << ";";
+    }
+};
+
+2. 各模块的设计模式与职责
+2.1 输入解析模块
+职责：解析 LLVM IR 代码并生成中间表示（Intermediate Representation, IR）。
+设计模式：
+工厂模式：支持多种输入格式（LLVM IR、WebAssembly）。
+构建者模式（Builder Pattern）：逐步构建复杂的 IR 数据结构。
+示例：
+class IRBuilder {
+    IRModule module;
+public:
+    void addFunction(const std::string& name) {
+        module.addFunction(name);
+    }
+    IRModule build() {
+        return module;
+    }
+};
+
+2.2 反编译核心模块
+职责：将中间表示（IR）映射到 JavaScript 的 AST。
+设计模式：
+策略模式：针对不同的指令类型应用不同的反编译策略。
+模板方法模式（Template Method Pattern）：定义反编译的通用流程，具体步骤由子类实现。
+示例：
+class DecompilerBase {
+public:
+    virtual void preprocess(IRModule& module) = 0;
+    virtual ASTNode* translateInstruction(const IRInstruction& instr) = 0;
+    virtual void postprocess(ASTNode* ast) = 0;
+
+    ASTNode* decompile(IRModule& module) {
+        preprocess(module);
+        ASTNode* ast = new ASTNode();
+        for (auto& instr : module.getInstructions()) {
+            ast->addChild(translateInstruction(instr));
+        }
+        postprocess(ast);
+        return ast;
+    }
+};
+
+2.3 代码生成模块
+职责：从 AST 生成 JavaScript 源代码。
+设计模式：
+访问者模式：遍历 AST 节点生成代码。
+单例模式（Singleton Pattern）：全局管理 JavaScript 的代码输出。
+示例：
+class CodeGenerator {
+public:
+    std::string generate(ASTNode* ast) {
+        std::stringstream output;
+        ast->accept(new JavaScriptCodeGenerator(output));
+        return output.str();
+    }
+};
+
+2.4 工具模块
+职责：提供辅助功能，如日志记录、错误处理、可视化。
+设计模式：
+单例模式：全局管理日志记录器或配置。
+观察者模式：实时更新调试信息。
+示例：
+class Logger {
+private:
+    Logger() {}
+public:
+    static Logger& getInstance() {
+        static Logger instance;
+        return instance;
+    }
+    void log(const std::string& message) {
+        std::cout << message << std::endl;
+    }
+};
+
+3. 综合架构图
++---------------------------------+
+|          Decompiler             |
+|---------------------------------|
+|  - ParserFactory                |
+|  - DecompileStrategy (Strategy) |
+|  - ASTNodeVisitor (Visitor)     |
+|  - Logger (Singleton)           |
++---------------------------------+
+           |          |
+    +------+          +------------------+
+    |                               |
++---v---+                     +-----v-----+
+| Parser |                     | CodeGenerator |
+|(Factory)|                     | (Visitor)     |
++---+---+                     +-----+-----+
+    |                               |
++---v-------------+     +-----------v-------+
+| IRModule (SSA)  |     | JavaScript AST     |
++-----------------+     +-------------------+

@@ -105,3 +105,6 @@ Merge 块会汇合来自不同路径的数据流
 	确定直接支配者（IDOM）：节点n 的直接支配者是 D(n) 中去掉自身后，距离最近的节点。
 	计算支配边界（DF）：
 		对于每个节点X，计算支配边界：如果 X 支配某节点 Y 的某些前驱路径，但不支配 Y 本身，则将 Y 加入 X 的支配边界。
+
+https://zhuanlan.zhihu.com/p/542396192
+https://blog.csdn.net/Jaihk662/article/details/78087540
